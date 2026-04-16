@@ -11,8 +11,8 @@ Automation for macOS Spaces wallpapers using Hammerspoon.
 ## Install
 
 ```bash
-git clone https://github.com/USER/mac-workspace.git
-cd mac-workspace
+git clone https://github.com/uriasfernandes/mac-workspace-config.git
+cd mac-workspace-config
 make install
 ```
 
