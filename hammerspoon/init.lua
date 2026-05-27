@@ -17,4 +17,15 @@ end
 
 hs.pathwatcher.new(os.getenv("HOME") .. "/.hammerspoon/", reloadConfig):start()
 
-hs.alert.show("🚀 Workspace carregado")
+-- atalho para bloquear via protetor de tela
+local lockMods = {"cmd"}
+local lockKey = "l"
+
+hs.hotkey.bind(lockMods, lockKey, function()
+    hs.caffeinate.startScreensaver()
+end)
+
+hs.alert.show([[
+🚀 Workspace carregado
+   Atalho lock: Cmd+L
+]])

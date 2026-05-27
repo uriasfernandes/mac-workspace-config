@@ -11,14 +11,43 @@ local wallpapers = {
 }
 
 local MIN_SPACES = 6
+local CACHE_DIR = os.getenv("HOME") .. "/Library/Caches/hammerspoon-wallpapers"
+
+local function shellQuote(value)
+    return string.format("'%s'", tostring(value):gsub("'", "'\\''"))
+end
+
+local function getCachedWallpaperPath(path)
+    hs.fs.mkdir(CACHE_DIR)
+
+    local attrs = hs.fs.attributes(path)
+    if not attrs then
+        return path
+    end
+
+    local fileName = path:match("([^/]+)$") or "wallpaper.png"
+    local modifiedAt = tostring(attrs.modification or os.time())
+    local cachedPath = string.format("%s/%s-%s", CACHE_DIR, modifiedAt, fileName)
+
+    if not hs.fs.attributes(cachedPath) then
+        local command = string.format("/bin/cp %s %s", shellQuote(path), shellQuote(cachedPath))
+        local _, _, _, rc = hs.execute(command, true)
+        if rc ~= 0 then
+            return path
+        end
+    end
+
+    return cachedPath
+end
 
 -- 🔒 só monitor principal
 local function setMainWallpaper(path)
     local main = hs.screen.mainScreen()
+    local resolvedPath = getCachedWallpaperPath(path)
 
     for _, screen in ipairs(hs.screen.allScreens()) do
         if screen:id() == main:id() then
-            screen:desktopImageURL("file://" .. path)
+            screen:desktopImageURL("file://" .. resolvedPath)
         end
     end
 end
