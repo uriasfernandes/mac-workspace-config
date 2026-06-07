@@ -13,6 +13,46 @@ local wallpapers = {
 local MIN_SPACES = 6
 local CACHE_DIR = os.getenv("HOME") .. "/Library/Caches/hammerspoon-wallpapers"
 
+local function isBuiltInScreen(screen)
+    local info = screen and screen:getInfo() or {}
+
+    if info.builtin ~= nil then return info.builtin end
+    if info.Builtin ~= nil then return info.Builtin end
+    if info.kCGDisplayIsBuiltin ~= nil then return info.kCGDisplayIsBuiltin end
+
+    local name = (screen and screen:name() or ""):lower()
+    return name:find("built%-in", 1, false) ~= nil
+        or name:find("retina", 1, false) ~= nil
+        or name:find("color lcd", 1, false) ~= nil
+end
+
+local function getTargetExternalScreen()
+    local main = hs.screen.mainScreen()
+    if main and not isBuiltInScreen(main) then
+        return main
+    end
+
+    for _, screen in ipairs(hs.screen.allScreens()) do
+        if not isBuiltInScreen(screen) then
+            return screen
+        end
+    end
+
+    return nil
+end
+
+local function getTargetScreenSpaces()
+    local target = getTargetExternalScreen()
+    if not target then
+        return {}
+    end
+
+    local allSpaces = spaces.allSpaces() or {}
+    local targetUUID = target:getUUID()
+
+    return allSpaces[targetUUID] or {}
+end
+
 local function shellQuote(value)
     return string.format("'%s'", tostring(value):gsub("'", "'\\''"))
 end
@@ -40,13 +80,17 @@ local function getCachedWallpaperPath(path)
     return cachedPath
 end
 
--- 🔒 só monitor principal
-local function setMainWallpaper(path)
-    local main = hs.screen.mainScreen()
+-- 🔒 só monitor externo (nunca tela interna)
+local function setTargetWallpaper(path)
+    local target = getTargetExternalScreen()
+    if not target then
+        return
+    end
+
     local resolvedPath = getCachedWallpaperPath(path)
 
     for _, screen in ipairs(hs.screen.allScreens()) do
-        if screen:id() == main:id() then
+        if screen:id() == target:id() then
             screen:desktopImageURL("file://" .. resolvedPath)
         end
     end
@@ -54,14 +98,7 @@ end
 
 -- 📊 contar Spaces
 local function getSpaceCount()
-    local allSpaces = spaces.allSpaces()
-    local count = 0
-
-    for _, s in pairs(allSpaces) do
-        count = count + #s
-    end
-
-    return count
+    return #getTargetScreenSpaces()
 end
 
 -- 🧠 criar novo Space (simulando Mission Control)
@@ -95,13 +132,9 @@ end
 
 -- 📍 descobrir índice do Space
 local function getSpaceIndex(spaceID)
-    local allSpaces = spaces.allSpaces()
-
-    for _, screenSpaces in pairs(allSpaces) do
-        for index, id in ipairs(screenSpaces) do
-            if id == spaceID then
-                return index
-            end
+    for index, id in ipairs(getTargetScreenSpaces()) do
+        if id == spaceID then
+            return index
         end
     end
 
@@ -111,9 +144,15 @@ end
 -- 🎯 lógica principal
 local function updateWallpaper()
 
+    local target = getTargetExternalScreen()
+    if not target then
+        print("ℹ️ Nenhum monitor externo detectado; wallpaper tematico ignorado.")
+        return
+    end
+
     ensureMinimumSpaces()
 
-    local currentSpace = spaces.focusedSpace()
+    local currentSpace = spaces.activeSpaceOnScreen(target)
     if not currentSpace then return end
 
     local index = getSpaceIndex(currentSpace)
@@ -131,7 +170,7 @@ local function updateWallpaper()
         return
     end
 
-    setMainWallpaper(wallpaper)
+    setTargetWallpaper(wallpaper)
 
     print("✅ Space:", index, "| Wallpaper:", wallpaper)
 

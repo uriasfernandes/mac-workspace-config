@@ -3,15 +3,28 @@
 OUTDIR="$HOME/Pictures/wallpapers"
 mkdir -p "$OUTDIR"
 
-WIDTH=2048
-HEIGHT=1280
+WIDTH="${WIDTH:-2560}"
+HEIGHT="${HEIGHT:-1080}"
+TEXT_SCALE_PERCENT="${TEXT_SCALE_PERCENT:-100}"
+TEXT_MARGIN_X="${TEXT_MARGIN_X:-0}"
+TEXT_MARGIN_Y="${TEXT_MARGIN_Y:-0}"
+TEXT_EDGE_PADDING="${TEXT_EDGE_PADDING:-6}"
 
-SAFE_X=0
-SAFE_Y=0
-TEXT_MAX_WIDTH=560
-TEXT_MAX_HEIGHT=92
-POINTSIZE_START=160
-POINTSIZE_MIN=28
+scale_value () {
+echo $(( $1 * TEXT_SCALE_PERCENT / 100 ))
+}
+
+# Safe area and text bounds are relative to the output resolution to avoid
+# oversized labels when monitor resolution changes.
+SAFE_X=$TEXT_MARGIN_X
+SAFE_Y=$TEXT_MARGIN_Y
+TEXT_MAX_WIDTH=$(scale_value $(( WIDTH / 7 )))
+TEXT_MAX_HEIGHT=$(scale_value $(( HEIGHT / 14 )))
+POINTSIZE_START=$(scale_value $(( HEIGHT / 13 )))
+POINTSIZE_MIN=$(scale_value $(( HEIGHT / 55 )))
+
+if [ "$POINTSIZE_START" -lt 48 ]; then POINTSIZE_START=48; fi
+if [ "$POINTSIZE_MIN" -lt 18 ]; then POINTSIZE_MIN=18; fi
 
 FONT="/System/Library/Fonts/Supplemental/Arial Bold.ttf"
 STROKE_COLOR='#00000099'
@@ -67,6 +80,8 @@ magick -size ${WIDTH}x${HEIGHT} gradient:"#0f172a-$COLOR" \
 	-pointsize "$POINTSIZE" \
 	label:"$NAME" \
 	-trim +repage \
+	-bordercolor none \
+	-border "$TEXT_EDGE_PADDING" \
 \) \
 -geometry +${SAFE_X}+${SAFE_Y} \
 -composite \
@@ -86,3 +101,5 @@ create_wallpaper "Bot" "#ef4444" "7-bot.png"
 
 echo ""
 echo "🚀 Wallpapers gerados em $OUTDIR"
+echo "📐 Resolução usada: ${WIDTH}x${HEIGHT}"
+echo "🔠 Escala de texto: ${TEXT_SCALE_PERCENT}%"
